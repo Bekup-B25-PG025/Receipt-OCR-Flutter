@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "862925492655",
+    "project_id": "bekup-flutter",
+    "storage_bucket": "bekup-flutter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:862925492655:android:c16ac586d5383226fc5f5a",
+        "android_client_info": {
+          "package_name": "com.smartnote.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjlzmhHPMtpsZHWKJttKVc4h7K-_xen8Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
