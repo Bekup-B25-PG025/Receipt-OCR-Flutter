@@ -1,12 +1,13 @@
+// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:smartnote_flutter/providers/receipt_provider.dart';
-import 'package:smartnote_flutter/screens/review_screen.dart';
+// ⬇️ tambahkan import ini
+import 'package:smartnote_flutter/screens/confirm_import_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -23,11 +24,15 @@ class _HomeScreenState extends State<HomeScreen> {
       if (x == null) return;
       final bytes = await x.readAsBytes();
 
+      // Jalankan OCR → isi draft & draftImage di provider
       await provider.analyzeImage(bytes);
 
       if (mounted) {
+        // ⬇️ arahkan ke layar konfirmasi
         Navigator.push(
-            context, MaterialPageRoute(builder: (_) => const ReviewScreen()));
+          context,
+          MaterialPageRoute(builder: (_) => const ConfirmImportScreen()),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
