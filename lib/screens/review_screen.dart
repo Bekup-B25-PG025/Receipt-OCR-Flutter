@@ -1,3 +1,4 @@
+// lib/screens/review_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -28,14 +29,17 @@ class _ReviewScreenState extends State<ReviewScreen> {
   void initState() {
     super.initState();
     final r = context.read<ReceiptProvider>().draft;
-    _merchant  = TextEditingController(text: r?.merchant ?? '');
-    _currency  = TextEditingController(text: r?.currency ?? 'IDR');
-    _subtotal  = TextEditingController(text: (r?.subtotal ?? 0).toString());
-    _tax       = TextEditingController(text: (r?.tax ?? 0).toString());
-    _total     = TextEditingController(text: (r?.total ?? 0).toString());
-    _payment   = TextEditingController(text: r?.paymentMethod ?? '');
-    _date      = r?.date ?? DateTime.now();
-    _items     = [...(r?.items ?? [])];
+    _merchant = TextEditingController(text: r?.merchant ?? '');
+    _currency = TextEditingController(text: r?.currency ?? 'IDR');
+    _subtotal = TextEditingController(text: (r?.subtotal ?? 0).toString());
+    _tax = TextEditingController(text: (r?.tax ?? 0).toString());
+    _total = TextEditingController(text: (r?.total ?? 0).toString());
+    _payment = TextEditingController(text: r?.paymentMethod ?? '');
+    _date = r?.date ?? DateTime.now();
+    _items = [...(r?.items ?? [])];
+
+    // Hitung ulang total ketika pajak berubah
+    _tax.addListener(_recalcTotals);
   }
 
   @override
@@ -51,8 +55,25 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   num _sumItems() => _items.fold<num>(0, (p, e) => p + e.price);
 
+  void _recalcTotals() {
+    final subtotalVal = _sumItems();
+    final taxVal = num.tryParse(_tax.text) ?? 0;
+    final totalVal = subtotalVal + taxVal;
+
+    // Update text tanpa mengubah selection/focus user
+    _subtotal.value = TextEditingValue(
+      text: subtotalVal.toString(),
+      selection: _subtotal.selection,
+    );
+    _total.value = TextEditingValue(
+      text: totalVal.toString(),
+      selection: _total.selection,
+    );
+    setState(() {}); // untuk update tampilan "Perhitungan cepat"
+  }
+
   Future<void> _save() async {
-    final rp  = context.read<ReceiptProvider>();
+    final rp = context.read<ReceiptProvider>();
     final cur = rp.draft;
     if (cur == null) return;
 
@@ -60,16 +81,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
       merchant: _merchant.text.trim().isEmpty ? null : _merchant.text.trim(),
       currency: _currency.text.trim().toUpperCase(),
       items: _items,
-      subtotal: num.tryParse(_subtotal.text) ?? _sumItems(),
-      tax:      num.tryParse(_tax.text) ?? 0,
-      total:    num.tryParse(_total.text) ?? (_sumItems() + (num.tryParse(_tax.text) ?? 0)),
+      subtotal: _sumItems(),
+      tax: num.tryParse(_tax.text) ?? 0,
+      total: (_sumItems() + (num.tryParse(_tax.text) ?? 0)),
       paymentMethod: _payment.text.trim().isEmpty ? null : _payment.text.trim(),
       date: _date,
       status: 'validated',
     );
 
     if (cur.id == 'draft') {
-      // create baru: butuh image bytes
       final img = rp.draftImage;
       if (img == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -79,13 +99,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
       }
       await LocalStoreService.saveNewReceipt(updated, img);
     } else {
-      // edit existing
       await LocalStoreService.updateReceipt(updated);
     }
 
     if (!mounted) return;
     rp.clearDraft();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tersimpan')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Tersimpan')));
     Navigator.pop(context);
   }
 
@@ -114,6 +134,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               Expanded(
                 child: TextField(
                   controller: _currency,
+                  textCapitalization: TextCapitalization.characters,
                   decoration: const InputDecoration(labelText: 'Mata Uang'),
                 ),
               ),
@@ -123,7 +144,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
               Expanded(
                 child: TextField(
                   controller: _payment,
-                  decoration: const InputDecoration(labelText: 'Metode Pembayaran (opsional)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Metode Pembayaran (opsional)',
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -139,27 +162,43 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     if (picked != null) setState(() => _date = picked);
                   },
                   child: InputDecorator(
-                    decoration: const InputDecoration(labelText: 'Tanggal'),
+                    decoration:
+                        const InputDecoration(labelText: 'Tanggal'),
                     child: Text(DateFormat('dd/MM/yyyy').format(_date)),
                   ),
                 ),
               ),
             ]),
             const SizedBox(height: 16),
-            const Text('Belanja:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Belanja:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
 
-            ..._items.asMap().entries.map((e) => _ReceiptItemTile(
-                  item: e.value,
-                  onRemove: () => setState(() => _items.removeAt(e.key)),
-                  onChanged: (ni) => setState(() => _items[e.key] = ni),
-                )),
+            // daftar item
+            ..._items.asMap().entries.map(
+              (e) => _ReceiptItemTile(
+                key: ValueKey('item-${e.key}'),
+                item: e.value,
+                onRemove: () {
+                  setState(() => _items.removeAt(e.key));
+                  _recalcTotals();
+                },
+                onChanged: (ni) {
+                  setState(() => _items[e.key] = ni);
+                  _recalcTotals();
+                },
+              ),
+            ),
 
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
-                onPressed: () => setState(() => _items.add(ReceiptItem(name: 'Item', qty: 1, price: 0))),
+                onPressed: () {
+                  setState(() => _items
+                      .add(ReceiptItem(name: 'Item', qty: 1, price: 0)));
+                  _recalcTotals();
+                },
                 icon: const Icon(Icons.add),
                 label: const Text('Tambah Item'),
               ),
@@ -170,26 +209,27 @@ class _ReviewScreenState extends State<ReviewScreen> {
               Expanded(
                 child: TextField(
                   controller: _subtotal,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Subtotal'),
-                  onChanged: (_) => setState(() {}),
+                  readOnly: true,
+                  decoration:
+                      const InputDecoration(labelText: 'Subtotal (auto)'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _tax,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Pajak/Service'),
-                  onChanged: (_) => setState(() {}),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      const InputDecoration(labelText: 'Pajak/Service'),
                 ),
               ),
             ]),
             const SizedBox(height: 8),
             TextField(
               controller: _total,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Total'),
+              readOnly: true,
+              decoration: const InputDecoration(labelText: 'Total (auto)'),
             ),
 
             const SizedBox(height: 12),
@@ -208,18 +248,67 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 }
 
-class _ReceiptItemTile extends StatelessWidget {
+/// Tile item yang **stateful** agar controller & fokus tidak hilang saat rebuild.
+class _ReceiptItemTile extends StatefulWidget {
   final ReceiptItem item;
   final VoidCallback? onRemove;
   final ValueChanged<ReceiptItem>? onChanged;
-  const _ReceiptItemTile({required this.item, this.onRemove, this.onChanged});
+  const _ReceiptItemTile({
+    super.key,
+    required this.item,
+    this.onRemove,
+    this.onChanged,
+  });
+
+  @override
+  State<_ReceiptItemTile> createState() => _ReceiptItemTileState();
+}
+
+class _ReceiptItemTileState extends State<_ReceiptItemTile> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _qtyCtrl;
+  late final TextEditingController _priceCtrl;
+
+  final _nameFocus = FocusNode();
+  final _qtyFocus = FocusNode();
+  final _priceFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.item.name);
+    _qtyCtrl = TextEditingController(text: widget.item.qty.toString());
+    _priceCtrl = TextEditingController(text: widget.item.price.toString());
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReceiptItemTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sinkronkan text jika nilai dari parent berubah dan fieldnya TIDAK sedang fokus.
+    if (!_nameFocus.hasFocus && oldWidget.item.name != widget.item.name) {
+      _nameCtrl.text = widget.item.name;
+    }
+    if (!_qtyFocus.hasFocus && oldWidget.item.qty != widget.item.qty) {
+      _qtyCtrl.text = widget.item.qty.toString();
+    }
+    if (!_priceFocus.hasFocus && oldWidget.item.price != widget.item.price) {
+      _priceCtrl.text = widget.item.price.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _qtyCtrl.dispose();
+    _priceCtrl.dispose();
+    _nameFocus.dispose();
+    _qtyFocus.dispose();
+    _priceFocus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final nameCtrl  = TextEditingController(text: item.name);
-    final qtyCtrl   = TextEditingController(text: item.qty.toString());
-    final priceCtrl = TextEditingController(text: item.price.toString());
-
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: Padding(
@@ -229,37 +318,57 @@ class _ReceiptItemTile extends StatelessWidget {
             Row(children: [
               Expanded(
                 child: TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Nama Item'),
-                  onChanged: (v) => onChanged?.call(ReceiptItem(name: v, qty: item.qty, price: item.price)),
+                  controller: _nameCtrl,
+                  focusNode: _nameFocus,
+                  decoration:
+                      const InputDecoration(labelText: 'Nama Item'),
+                  onChanged: (v) => widget.onChanged?.call(
+                    ReceiptItem(
+                      name: v,
+                      qty: num.tryParse(_qtyCtrl.text) ?? 1,
+                      price: num.tryParse(_priceCtrl.text) ?? 0,
+                    ),
+                  ),
                 ),
               ),
-              IconButton(icon: const Icon(Icons.delete_outline), onPressed: onRemove),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: widget.onRemove,
+              ),
             ]),
             Row(children: [
               Expanded(
                 child: TextField(
-                  controller: qtyCtrl,
-                  keyboardType: TextInputType.number,
+                  controller: _qtyCtrl,
+                  focusNode: _qtyFocus,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   decoration: const InputDecoration(labelText: 'Qty'),
-                  onChanged: (v) => onChanged?.call(ReceiptItem(
-                    name: item.name,
-                    qty: num.tryParse(v) ?? 1,
-                    price: item.price,
-                  )),
+                  onChanged: (v) => widget.onChanged?.call(
+                    ReceiptItem(
+                      name: _nameCtrl.text,
+                      qty: num.tryParse(v) ?? 1,
+                      price: num.tryParse(_priceCtrl.text) ?? 0,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
-                  controller: priceCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Harga (total item)'),
-                  onChanged: (v) => onChanged?.call(ReceiptItem(
-                    name: item.name,
-                    qty: item.qty,
-                    price: num.tryParse(v) ?? 0,
-                  )),
+                  controller: _priceCtrl,
+                  focusNode: _priceFocus,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                      labelText: 'Harga (total item)'),
+                  onChanged: (v) => widget.onChanged?.call(
+                    ReceiptItem(
+                      name: _nameCtrl.text,
+                      qty: num.tryParse(_qtyCtrl.text) ?? 1,
+                      price: num.tryParse(v) ?? 0,
+                    ),
+                  ),
                 ),
               ),
             ]),
