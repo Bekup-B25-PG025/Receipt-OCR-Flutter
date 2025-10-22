@@ -209,11 +209,14 @@ class _HistoryCard extends StatelessWidget {
                             color: Colors.grey.shade500,
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            DateFormat('dd MMM yyyy').format(receipt.date),
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
+                          Flexible(
+                            child: Text(
+                              DateFormat('dd MMM yyyy').format(receipt.date),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 12),

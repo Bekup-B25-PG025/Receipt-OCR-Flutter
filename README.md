@@ -1,108 +1,128 @@
-SmartNote – Receipt OCR Flutter App
+# SmartNote – Receipt OCR Flutter App
 
-Digitalisasi nota belanja dengan Flutter + Google Gemini.
+![Flutter](https://img.shields.io/badge/Flutter-3.22%2B-02569B?logo=flutter)
+![Dart](https://img.shields.io/badge/Dart-3.4%2B-0175C2?logo=dart)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+Digitalisasi nota belanja dengan Flutter + Google Gemini.  
 Ambil foto struk, biarkan AI mengurai item & totalnya, review hasilnya, lalu simpan. Lihat riwayat transaksi dan laporan per bulan — tanpa backend (local-first). Cocok untuk demo/POC dan bisa diupgrade ke Firebase kapan pun.
 
-✨ Fitur
+---
 
-Scan nota dari kamera atau galeri.
+## ✨ Fitur
 
-OCR & parsing AI (Gemini 1.5 Flash) → merchant, tanggal, mata uang, item (nama/qty/harga), subtotal, pajak, total.
+- ✅ **Scan nota** dari kamera atau galeri
+- 🤖 **OCR & parsing AI** (Gemini 1.5 Flash) → merchant, tanggal, mata uang, item (nama/qty/harga), subtotal, pajak, total
+- ✏️ **Review & edit** hasil AI sebelum simpan (subtotal & total auto-recalc)
+- 📋 **Riwayat**: daftar semua nota; ketuk untuk melihat/mengedit kembali
+- 📊 **Laporan bulanan**: grup per bulan + total bulanan
+- 💾 **Local-first**: data disimpan di perangkat (receipts.json + gambar di folder images/)
 
-Review & edit hasil AI sebelum simpan (subtotal & total auto-recalc).
+---
 
-Riwayat: daftar semua nota; ketuk untuk melihat/mengedit kembali.
+## 🧱 Tech Stack
 
-Laporan bulanan: grup per bulan + total bulanan.
+- **Flutter** (Material 3) + **Provider** (state management)
+- **google_generative_ai** (Gemini API)
+- **image_picker**, **path_provider**, **intl**, **uuid**
+- **Branding**: flutter_launcher_icons, flutter_native_splash
 
-Local-first: data disimpan di perangkat (receipts.json + gambar di folder images/).
+---
 
-🧱 Tech Stack
+## 🗂️ Struktur Data Lokal
 
-Flutter (Material 3), Provider (state management)
+File & gambar disimpan di **Application Documents Directory**:
 
-google_generative_ai (Gemini API)
-
-image_picker, path_provider, intl, uuid
-
-Branding: flutter_launcher_icons, flutter_native_splash
-
-🗂️ Struktur Data Lokal
-
-File & gambar disimpan di Application Documents Directory:
-
+```
 <app-documents>/smartnote/
   ├─ receipts.json            # database ringan (JSON)
   └─ images/
       └─ <id>.jpg             # foto nota tersimpan
+```
 
+> **Note:** Tidak ada backend yang dibutuhkan. App tetap berfungsi offline untuk baca/lihat/edit data yang sudah tersimpan. OCR AI membutuhkan koneksi saat memanggil Gemini.
 
-Tidak ada backend yang dibutuhkan. App tetap berfungsi offline untuk baca/lihat/edit data yang sudah tersimpan. OCR AI membutuhkan koneksi saat memanggil Gemini.
+---
 
-🚀 Quick Start
-1) Prasyarat
+## 🚀 Quick Start
 
-Flutter 3.22+
+### 1️⃣ Prasyarat
 
-Android SDK / Xcode (untuk run di device)
+- Flutter 3.22+
+- Android SDK / Xcode (untuk run di device)
+- Akun [Google AI Studio](https://makersuite.google.com/app/apikey) (API Key)
 
-Akun Google AI Studio (API Key)
+### 2️⃣ Clone & Install
 
-2) Clone & Install
+```bash
 git clone https://github.com/Bekup-B25-PG025/Receipt-OCR-Flutter.git
 cd Receipt-OCR-Flutter
 flutter pub get
+```
 
-3) API Key (Gemini)
+### 3️⃣ API Key (Gemini)
 
-Buat file .env di root proyek:
+Buat file `.env` di root proyek:
 
+```env
 GEMINI_API_KEY=PASTE_API_KEY_DI_SINI
+```
 
+Pastikan `pubspec.yaml` sudah memuat:
 
-Pastikan pubspec.yaml sudah memuat:
-
+```yaml
 flutter:
   assets:
     - .env
+```
 
+> ⚠️ **Jangan commit `.env` ke repo publik!**
 
-Jangan commit .env ke repo publik.
+### 4️⃣ Jalankan
 
-4) Jalankan
+```bash
 flutter run
+```
 
-🧠 Model AI yang Dipakai
+---
 
-gemini-1.5-flash (disarankan & gratisan AI Studio)
+## 🧠 Model AI yang Dipakai
+
+**Model:** `gemini-1.5-flash` (disarankan & gratisan AI Studio)
 
 App sudah memformat prompt & output ke JSON dengan skema:
 
+```json
 {
   "merchant": "string | null",
   "date": "YYYY-MM-DD",
   "currency": "IDR|USD|...",
   "payment_method": "string | null",
-  "items": [{"name":"string","qty": number,"price": number}],
+  "items": [{"name":"string", "qty": number, "price": number}],
   "subtotal": number,
   "tax": number,
   "total": number,
   "raw_text": "full OCR text"
 }
+```
 
-📱 Branding (Ikon & Splash)
+---
+
+## 📱 Branding (Ikon & Splash)
 
 Taruh aset di:
 
+```
 assets/branding/
-  icon-foreground.png
-  icon_background_blue.png
-  splash-icon.png
-  branding.png
+  ├─ icon-foreground.png
+  ├─ icon_background_blue.png
+  ├─ splash-icon.png
+  └─ branding.png
+```
 
+Contoh konfigurasi di `pubspec.yaml`:
 
-Contoh konfigurasi di pubspec.yaml:
-
+```yaml
 flutter_launcher_icons:
   android: true
   ios: true
@@ -125,20 +145,26 @@ flutter_native_splash:
     icon_background_color: "#0B0710"
     image: assets/branding/splash-icon.png
     branding: assets/branding/branding.png
-
+```
 
 Generate:
 
+```bash
 dart run flutter_launcher_icons
 dart run flutter_native_splash:create
+```
 
-🧭 Navigasi Aplikasi
+---
 
-Home: ambil/unggah foto → AI parse → Konfirmasi Review → Simpan.
+## 🧭 Navigasi Aplikasi
 
-History: daftar nota tersimpan → ketuk untuk detail & edit.
+| Screen | Deskripsi |
+|--------|-----------|
+| **Home** | Ambil/unggah foto → AI parse → Konfirmasi Review → Simpan |
+| **History** | Daftar nota tersimpan → ketuk untuk detail & edit |
+| **Report** | Rekap per bulan (daftar transaksi & total) |
 
-Laporan: rekap per bulan (daftar transaksi & total).
+---
 
 🛠️ Troubleshooting
 
@@ -171,46 +197,63 @@ Cukup flutter run biasa, atau flutter run --no-impeller.
 
 Saat ingin sort, salin dulu: final list = receipts.toList()..sort(...);
 
-5) Perubahan tidak muncul
+### 5. Perubahan tidak muncul
 
-Uninstall app dari device (clear cache), lalu flutter run lagi.
+Uninstall app dari device (clear cache), lalu `flutter run` lagi.
 
-🧩 Folder Penting
+---
+
+## 🧩 Folder Penting
+
+```
 lib/
-  models/
-    receipt.dart              # model nota & item
-  providers/
-    receipt_provider.dart     # state draft + analyze
-  screens/
-    home_screen.dart          # ambil/gali gambar
-    review_screen.dart        # review & edit (auto-recalc)
-    history_screen.dart       # daftar riwayat
-    report_screen.dart        # laporan per bulan
-  services/
-    gemini_service.dart       # panggil Gemini API
-    local_store_service.dart  # simpan/baca JSON lokal
-  app.dart                    # root + bottom nav
+  ├─ models/
+  │   └─ receipt.dart              # model nota & item
+  ├─ providers/
+  │   └─ receipt_provider.dart     # state draft + analyze
+  ├─ screens/
+  │   ├─ home_screen.dart          # ambil/galeri gambar
+  │   ├─ review_screen.dart        # review & edit (auto-recalc)
+  │   ├─ history_screen.dart       # daftar riwayat
+  │   └─ report_screen.dart        # laporan per bulan
+  ├─ services/
+  │   ├─ gemini_service.dart       # panggil Gemini API
+  │   └─ local_store_service.dart  # simpan/baca JSON lokal
+  └─ app.dart                      # root + bottom nav
+```
 
-🗺️ Roadmap
+---
 
-Sinkronisasi Firebase (opsional) saat akun siap.
+## 🗺️ Roadmap
 
-Kategori pengeluaran & grafik.
+- [ ] Sinkronisasi Firebase (opsional) saat akun siap
+- [ ] Kategori pengeluaran & grafik
+- [ ] Ekspor CSV/PDF
+- [ ] Multi-bahasa (i18n)
+- [ ] Dark mode theme
 
-Ekspor CSV/PDF.
+---
 
-🤝 Kontribusi
+## 🤝 Kontribusi
 
-Pull request & issue dipersilakan.
-Mohon jangan sertakan API key atau data sensitif di commit.
+Pull request & issue dipersilakan!  
+Mohon **jangan sertakan API key atau data sensitif** di commit.
 
-📄 Lisensi
+---
 
-Pilih lisensi sesuai kebutuhan (mis. MIT).
-Tambahkan file LICENSE di root proyek.
+## 📄 Lisensi
 
-🙌 Kredit
+Pilih lisensi sesuai kebutuhan (mis. MIT).  
+Tambahkan file `LICENSE` di root proyek.
 
-Google Gemini API
+---
 
-Paket komunitas Flutter (lihat pubspec.yaml)
+## 🙌 Kredit
+
+- [Google Gemini API](https://ai.google.dev/)
+- Paket komunitas Flutter (lihat `pubspec.yaml`)
+- Icons dari [Material Design](https://fonts.google.com/icons)
+
+---
+
+**Dibuat dengan ❤️ menggunakan Flutter & Gemini AI**
