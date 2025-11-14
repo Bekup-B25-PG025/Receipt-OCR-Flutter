@@ -127,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'SmartNote',
+                      'Smart Nota',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
