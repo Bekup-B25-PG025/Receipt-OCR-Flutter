@@ -13,7 +13,6 @@ class AnalyticsScreen extends StatefulWidget {
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   int _expandedYearlyLimit = 3;
-  int _expandedWeeklyLimit = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -96,12 +95,129 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                               fontWeight: FontWeight.w400,
                             ),
                           ),
+                          const SizedBox(height: 24),
+
+                          // Section 1: Total Pengeluaran Card (Last 12 months)
+                          Builder(
+                            builder: (context) {
+                              final now = DateTime.now();
+                              final oneYearAgo =
+                                  DateTime(now.year - 1, now.month, now.day);
+                              final lastYearReceipts = receipts
+                                  .where((r) => r.date.isAfter(oneYearAgo))
+                                  .toList();
+                              final lastYearTotal = lastYearReceipts.fold<num>(
+                                  0, (p, r) => p + r.total);
+
+                              return Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF6366F1),
+                                      Color(0xFF8B5CF6),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(24),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF6366F1)
+                                          .withValues(alpha: 0.3),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: const Icon(
+                                            Icons
+                                                .account_balance_wallet_rounded,
+                                            color: Colors.white,
+                                            size: 28,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            '${lastYearReceipts.length} transaksi',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Text(
+                                      'Total Pengeluaran (12 Bulan Terakhir)',
+                                      style: TextStyle(
+                                        color:
+                                            Colors.white.withValues(alpha: 0.9),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      '${lastYearReceipts.isNotEmpty ? lastYearReceipts.first.currency : 'IDR'} ${NumberFormat('#,##0', 'id_ID').format(lastYearTotal)}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: -1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ),
                   ),
 
-                  // Section 1: Yearly Expenses (Dropdown)
+                  // Section 2: Weekly Bar Chart (Last Year Only)
+                  SliverToBoxAdapter(
+                    child: _WeeklyBarChartSection(
+                      receipts: receipts,
+                    ),
+                  ),
+
+                  // Section 3: Category Pie Chart (Last Year Only)
+                  SliverToBoxAdapter(
+                    child: _CategoryPieChartSection(
+                      receipts: receipts,
+                    ),
+                  ),
+
+                  // Section 4: Yearly Expenses List
                   SliverToBoxAdapter(
                     child: _YearlyExpensesSection(
                       receipts: receipts,
@@ -112,40 +228,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             _expandedYearlyLimit = 3;
                           } else {
                             _expandedYearlyLimit += 3;
-                          }
-                        });
-                      },
-                    ),
-                  ),
-
-                  // Section 2: Category Pie Chart
-                  SliverToBoxAdapter(
-                    child: _CategoryPieChartSection(
-                      receipts: receipts,
-                      limit: _expandedYearlyLimit,
-                      onLoadMore: () {
-                        setState(() {
-                          if (_expandedYearlyLimit > 3) {
-                            _expandedYearlyLimit = 3;
-                          } else {
-                            _expandedYearlyLimit += 3;
-                          }
-                        });
-                      },
-                    ),
-                  ),
-
-                  // Section 3: Weekly Bar Chart
-                  SliverToBoxAdapter(
-                    child: _WeeklyBarChartSection(
-                      receipts: receipts,
-                      limit: _expandedWeeklyLimit,
-                      onLoadMore: () {
-                        setState(() {
-                          if (_expandedWeeklyLimit > 3) {
-                            _expandedWeeklyLimit = 3;
-                          } else {
-                            _expandedWeeklyLimit += 3;
                           }
                         });
                       },
@@ -398,18 +480,18 @@ class _YearDetailList extends StatelessWidget {
 // Section 2: Category Pie Chart
 class _CategoryPieChartSection extends StatelessWidget {
   final List<Receipt> receipts;
-  final int limit;
-  final VoidCallback onLoadMore;
 
   const _CategoryPieChartSection({
     required this.receipts,
-    required this.limit,
-    required this.onLoadMore,
   });
 
-  Map<String, num> _getCategoryTotals(int year) {
+  Map<String, num> _getCategoryTotals() {
+    // Get receipts from last 12 months only
+    final now = DateTime.now();
+    final oneYearAgo = DateTime(now.year - 1, now.month, now.day);
+
     final Map<String, num> categoryTotals = {};
-    for (final receipt in receipts.where((r) => r.date.year == year)) {
+    for (final receipt in receipts.where((r) => r.date.isAfter(oneYearAgo))) {
       final category = receipt.category;
       categoryTotals[category] =
           (categoryTotals[category] ?? 0) + receipt.total;
@@ -434,9 +516,13 @@ class _CategoryPieChartSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final years = receipts.map((r) => r.date.year).toSet().toList()
-      ..sort((a, b) => b.compareTo(a));
-    final displayedYears = years.take(limit).toList();
+    final categoryTotals = _getCategoryTotals();
+
+    if (categoryTotals.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final total = categoryTotals.values.fold<num>(0, (p, v) => p + v);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -471,123 +557,78 @@ class _CategoryPieChartSection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Kategori Per Tahun',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1F2937),
+                const Expanded(
+                  child: Text(
+                    'Kategori Pengeluaran (12 Bulan Terakhir)',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1F2937),
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            ...displayedYears.map((year) {
-              final categoryTotals = _getCategoryTotals(year);
-              final total = categoryTotals.values.fold<num>(0, (p, e) => p + e);
+            SizedBox(
+              height: 200,
+              child: PieChart(
+                PieChartData(
+                  sections: categoryTotals.entries
+                      .toList()
+                      .asMap()
+                      .entries
+                      .map((entry) {
+                    final index = entry.key;
+                    final amount = entry.value.value;
+                    final percentage = (amount / total * 100);
 
-              if (total == 0) return const SizedBox.shrink();
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tahun $year',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1F2937),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 200,
-                    child: PieChart(
-                      PieChartData(
-                        sections: categoryTotals.entries
-                            .toList()
-                            .asMap()
-                            .entries
-                            .map((entry) {
-                          final index = entry.key;
-                          final amount = entry.value.value;
-                          final percentage = (amount / total * 100);
-
-                          return PieChartSectionData(
-                            value: amount.toDouble(),
-                            title: '${percentage.toStringAsFixed(1)}%',
-                            color: _getCategoryColor(index),
-                            radius: 80,
-                            titleStyle: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          );
-                        }).toList(),
-                        sectionsSpace: 2,
-                        centerSpaceRadius: 40,
+                    return PieChartSectionData(
+                      value: amount.toDouble(),
+                      title: '${percentage.toStringAsFixed(1)}%',
+                      color: _getCategoryColor(index),
+                      radius: 80,
+                      titleStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    );
+                  }).toList(),
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 40,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children:
+                  categoryTotals.entries.toList().asMap().entries.map((entry) {
+                final index = entry.key;
+                final category = entry.value.key;
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _getCategoryColor(index),
+                        shape: BoxShape.circle,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: categoryTotals.entries
-                        .toList()
-                        .asMap()
-                        .entries
-                        .map((entry) {
-                      final index = entry.key;
-                      final category = entry.value.key;
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: _getCategoryColor(index),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            category,
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade700),
-                          ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              );
-            }),
-            if (years.length > limit)
-              Center(
-                child: TextButton.icon(
-                  onPressed: onLoadMore,
-                  icon: const Icon(Icons.expand_more_rounded),
-                  label: const Text('Muat Lebih Banyak'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF6366F1),
-                  ),
-                ),
-              ),
-            if (limit > 3 && years.length <= limit)
-              Center(
-                child: TextButton.icon(
-                  onPressed: onLoadMore,
-                  icon: const Icon(Icons.expand_less_rounded),
-                  label: const Text('Sembunyikan'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF6366F1),
-                  ),
-                ),
-              ),
+                    const SizedBox(width: 6),
+                    Text(
+                      category,
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
           ],
         ),
       ),
@@ -595,43 +636,36 @@ class _CategoryPieChartSection extends StatelessWidget {
   }
 }
 
-// Section 3: Weekly Bar Chart
+// Section 3: Monthly Bar Chart
 class _WeeklyBarChartSection extends StatelessWidget {
   final List<Receipt> receipts;
-  final int limit;
-  final VoidCallback onLoadMore;
 
   const _WeeklyBarChartSection({
     required this.receipts,
-    required this.limit,
-    required this.onLoadMore,
   });
 
-  Map<int, num> _getWeeklyTotals(int year, int month) {
-    final Map<int, num> weeklyTotals = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+  Map<String, num> _getMonthlyTotals() {
+    // Get receipts from last 12 months only
+    final now = DateTime.now();
+    final oneYearAgo = DateTime(now.year - 1, now.month, now.day);
 
-    for (final receipt in receipts
-        .where((r) => r.date.year == year && r.date.month == month)) {
-      final week = ((receipt.date.day - 1) ~/ 7) + 1;
-      weeklyTotals[week] = (weeklyTotals[week] ?? 0) + receipt.total;
+    final Map<String, num> monthlyTotals = {};
+    for (final receipt in receipts.where((r) => r.date.isAfter(oneYearAgo))) {
+      final key = DateFormat('MMM yyyy').format(receipt.date);
+      monthlyTotals[key] = (monthlyTotals[key] ?? 0) + receipt.total;
     }
-
-    return weeklyTotals;
+    return monthlyTotals;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Get unique year-month combinations
-    final yearMonths = <String, DateTime>{};
-    for (final receipt in receipts) {
-      final key =
-          '${receipt.date.year}-${receipt.date.month.toString().padLeft(2, '0')}';
-      yearMonths[key] = DateTime(receipt.date.year, receipt.date.month);
+    final monthlyTotals = _getMonthlyTotals();
+
+    if (monthlyTotals.isEmpty) {
+      return const SizedBox.shrink();
     }
 
-    final sortedYearMonths = yearMonths.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final displayedMonths = sortedYearMonths.take(limit).toList();
+    final maxValue = monthlyTotals.values.reduce((a, b) => a > b ? a : b);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -666,131 +700,125 @@ class _WeeklyBarChartSection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Pengeluaran Per Minggu',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1F2937),
+                const Expanded(
+                  child: Text(
+                    'Pengeluaran Per Bulan (12 Bulan Terakhir)',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1F2937),
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            ...displayedMonths.map((entry) {
-              final date = entry.value;
-              final year = date.year;
-              final month = date.month;
-              final weeklyTotals = _getWeeklyTotals(year, month);
-              final maxValue =
-                  weeklyTotals.values.reduce((a, b) => a > b ? a : b);
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    DateFormat('MMMM yyyy').format(date),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1F2937),
+            SizedBox(
+              height: 220,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: maxValue.toDouble() * 1.2,
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final month =
+                            monthlyTotals.keys.toList()[group.x.toInt()];
+                        return BarTooltipItem(
+                          '$month\n${NumberFormat.compact().format(rod.toY)}',
+                          const TextStyle(color: Colors.white, fontSize: 12),
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 200,
-                    child: BarChart(
-                      BarChartData(
-                        alignment: BarChartAlignment.spaceAround,
-                        maxY: maxValue.toDouble() * 1.2,
-                        barTouchData: BarTouchData(enabled: true),
-                        titlesData: FlTitlesData(
-                          show: true,
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                return Text(
-                                  'W${value.toInt()}',
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          final months = monthlyTotals.keys.toList();
+                          if (value.toInt() >= 0 &&
+                              value.toInt() < months.length) {
+                            final month = months[value.toInt()];
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Transform.rotate(
+                                angle: -0.5,
+                                child: Text(
+                                  month.split(' ')[0],
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 9,
                                     color: Colors.grey.shade600,
                                   ),
-                                );
-                              },
-                            ),
-                          ),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 40,
-                              getTitlesWidget: (value, meta) {
-                                if (value == 0) return const Text('');
-                                return Text(
-                                  NumberFormat.compact().format(value),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          topTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false)),
-                        ),
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          horizontalInterval:
-                              maxValue > 0 ? maxValue.toDouble() / 4 : 1,
-                        ),
-                        borderData: FlBorderData(show: false),
-                        barGroups: weeklyTotals.entries.map((entry) {
-                          return BarChartGroupData(
-                            x: entry.key,
-                            barRods: [
-                              BarChartRodData(
-                                toY: entry.value.toDouble(),
-                                color: const Color(0xFF6366F1),
-                                width: 20,
-                                borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(4)),
+                                ),
                               ),
-                            ],
-                          );
-                        }).toList(),
+                            );
+                          }
+                          return const Text('');
+                        },
                       ),
                     ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        getTitlesWidget: (value, meta) {
+                          if (value == 0) return const Text('');
+                          return Text(
+                            NumberFormat.compact().format(value),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey.shade600,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                   ),
-                  const SizedBox(height: 24),
-                ],
-              );
-            }),
-            if (sortedYearMonths.length > limit)
-              Center(
-                child: TextButton.icon(
-                  onPressed: onLoadMore,
-                  icon: const Icon(Icons.expand_more_rounded),
-                  label: const Text('Muat Lebih Banyak'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF6366F1),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval:
+                        maxValue > 0 ? maxValue.toDouble() / 4 : 1,
                   ),
+                  borderData: FlBorderData(show: false),
+                  barGroups: monthlyTotals.entries
+                      .toList()
+                      .asMap()
+                      .entries
+                      .map((entry) {
+                    final index = entry.key;
+                    final amount = entry.value.value;
+                    return BarChartGroupData(
+                      x: index,
+                      barRods: [
+                        BarChartRodData(
+                          toY: amount.toDouble(),
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFF6366F1),
+                              Color(0xFF8B5CF6),
+                            ],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                          width: 16,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
                 ),
               ),
-            if (limit > 3 && sortedYearMonths.length <= limit)
-              Center(
-                child: TextButton.icon(
-                  onPressed: onLoadMore,
-                  icon: const Icon(Icons.expand_less_rounded),
-                  label: const Text('Sembunyikan'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF6366F1),
-                  ),
-                ),
-              ),
+            ),
           ],
         ),
       ),
