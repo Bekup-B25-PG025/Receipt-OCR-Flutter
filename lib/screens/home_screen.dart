@@ -1,11 +1,12 @@
 // lib/screens/home_screen.dart
-import 'dart:ui';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:smartnote_flutter/providers/receipt_provider.dart';
 // ⬇️ tambahkan import ini
 import 'package:smartnote_flutter/screens/confirm_import_screen.dart';
+import 'package:smartnote_flutter/screens/batch_confirm_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -43,19 +44,59 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       setState(() => _busy = true);
       final provider = context.read<ReceiptProvider>();
-      final x = await _picker.pickImage(source: source, imageQuality: 95);
-      if (x == null) return;
-      final bytes = await x.readAsBytes();
 
-      // Jalankan OCR → isi draft & draftImage di provider
-      await provider.analyzeImage(bytes);
+      if (source == ImageSource.camera) {
+        // Camera: single image only
+        final x = await _picker.pickImage(source: source, imageQuality: 95);
+        if (x == null) return;
+        final bytes = await x.readAsBytes();
 
-      if (mounted) {
-        // ⬇️ arahkan ke layar konfirmasi
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ConfirmImportScreen()),
-        );
+        // Jalankan OCR → isi draft & draftImage di provider
+        await provider.analyzeImage(bytes);
+
+        if (mounted) {
+          // arahkan ke layar konfirmasi
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ConfirmImportScreen()),
+          );
+        }
+      } else {
+        // Gallery: allow multiple images (max 5)
+        final images = await _picker.pickMultiImage(imageQuality: 95);
+        if (images.isEmpty) return;
+
+        // Limit to 5 images
+        final selectedImages = images.take(5).toList();
+
+        if (selectedImages.length > 5) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Maksimal 5 gambar yang dapat dipilih'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+
+        // Read all image bytes
+        final imageBytesList = <Uint8List>[];
+        for (final img in selectedImages) {
+          final bytes = await img.readAsBytes();
+          imageBytesList.add(bytes);
+        }
+
+        // Jalankan batch OCR
+        await provider.analyzeMultipleImages(imageBytesList);
+
+        if (mounted) {
+          // Import batch confirm screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BatchConfirmScreen()),
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -66,14 +107,13 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF6366F1),
-              Color(0xFF8B5CF6),
-              Color(0xFFEC4899),
+              const Color(0xFF6366F1).withValues(alpha: 0.1),
+              Colors.white,
             ],
           ),
         ),
@@ -91,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen>
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Color(0xFF6366F1),
                         letterSpacing: -1,
                       ),
                     ),
@@ -100,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen>
                       'Digitalisasi Nota Anda',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: Colors.grey.shade600,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -115,136 +155,166 @@ class _HomeScreenState extends State<HomeScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Animated Icon
-                        ScaleTransition(
-                          scale: _scaleAnimation,
-                          child: Container(
-                            padding: const EdgeInsets.all(32),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.3),
-                                width: 2,
+                        // Animated Icon with Loading
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Loading spinner when busy
+                            if (_busy)
+                              SizedBox(
+                                width: 200,
+                                height: 200,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    const Color(0xFF6366F1)
+                                        .withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ),
+
+                            // Main Icon Container
+                            ScaleTransition(
+                              scale: _scaleAnimation,
+                              child: Container(
+                                padding: const EdgeInsets.all(32),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      const Color(0xFF6366F1)
+                                          .withValues(alpha: 0.1),
+                                      const Color(0xFF8B5CF6)
+                                          .withValues(alpha: 0.05),
+                                    ],
+                                  ),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFF6366F1)
+                                        .withValues(alpha: 0.2),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF6366F1)
+                                        .withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.receipt_long_rounded,
+                                    size: 80,
+                                    color: _busy
+                                        ? Colors.grey.shade400
+                                        : const Color(0xFF6366F1),
+                                  ),
+                                ),
                               ),
                             ),
-                            child: Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.receipt_long_rounded,
-                                size: 80,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                          ],
                         ),
 
                         const SizedBox(height: 48),
 
-                        // Glass Card dengan Buttons
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                            child: Container(
-                              padding: const EdgeInsets.all(32),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  width: 1.5,
+                        // Card dengan Buttons
+                        Container(
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF6366F1)
+                                    .withValues(alpha: 0.08),
+                                blurRadius: 24,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Mulai Scan Nota',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1F2937),
                                 ),
                               ),
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    'Mulai Scan Nota',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Pilih cara mengambil gambar nota',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 32),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Pilih cara mengambil gambar nota',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'File bisa melampirkan beberapa nota (maks 5)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 32),
 
-                                  // Camera Button
-                                  _ModernButton(
-                                    onPressed: _busy
-                                        ? null
-                                        : () => _pick(ImageSource.camera),
-                                    icon: Icons.camera_alt_rounded,
-                                    label: 'Ambil Foto',
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.white,
-                                        Colors.white.withValues(alpha: 0.9),
-                                      ],
-                                    ),
-                                    textColor: const Color(0xFF6366F1),
-                                  ),
+                              // Camera Button
+                              _ModernButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () => _pick(ImageSource.camera),
+                                icon: Icons.camera_alt_rounded,
+                                label: 'Ambil Foto',
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF6366F1),
+                                    Color(0xFF8B5CF6),
+                                  ],
+                                ),
+                                textColor: Colors.white,
+                              ),
 
-                                  const SizedBox(height: 16),
+                              const SizedBox(height: 16),
 
-                                  // Gallery Button
-                                  _ModernButton(
-                                    onPressed: _busy
-                                        ? null
-                                        : () => _pick(ImageSource.gallery),
-                                    icon: Icons.photo_library_rounded,
-                                    label: 'Pilih dari Galeri',
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.white.withValues(alpha: 0.3),
-                                        Colors.white.withValues(alpha: 0.2),
-                                      ],
-                                    ),
-                                    textColor: Colors.white,
-                                    borderColor:
-                                        Colors.white.withValues(alpha: 0.5),
-                                  ),
+                              // Gallery Button
+                              _ModernButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () => _pick(ImageSource.gallery),
+                                icon: Icons.photo_library_rounded,
+                                label: 'Pilih dari Galeri',
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.grey.shade100,
+                                    Colors.grey.shade50,
+                                  ],
+                                ),
+                                textColor: const Color(0xFF6366F1),
+                                borderColor: Colors.grey.shade300,
+                              ),
 
-                                  if (_busy) ...[
-                                    const SizedBox(height: 24),
-                                    const Column(
-                                      children: [
-                                        SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 3,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                    Colors.white),
-                                          ),
-                                        ),
-                                        SizedBox(height: 12),
-                                        Text(
-                                          'Memproses...',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ],
+                              if (_busy) ...[
+                                const SizedBox(height: 24),
+                                Column(
+                                  children: [
+                                    Text(
+                                      'Memproses gambar...',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ],
-                                ],
-                              ),
-                            ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
 
@@ -254,26 +324,32 @@ class _HomeScreenState extends State<HomeScreen>
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.lightbulb_outline_rounded,
-                                color: Colors.white,
-                                size: 20,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF6366F1)
+                                    .withValues(alpha: 0.08),
+                                blurRadius: 24,
+                                offset: const Offset(0, 8),
                               ),
-                              SizedBox(width: 12),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.lightbulb_rounded,
+                                color: Color(0xFFFFA500),
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   'Pastikan gambar nota jelas dan tidak buram',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: Colors.grey.shade700,
                                     fontSize: 13,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),

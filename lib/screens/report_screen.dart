@@ -35,24 +35,25 @@ class ReportScreen extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.bar_chart_rounded,
-                        size: 80,
-                        color: Colors.grey.shade300,
+                        size: 120,
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.4),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       Text(
                         'Belum ada data laporan',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade600,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade800,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Text(
                         'Scan nota untuk melihat laporan',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade500,
+                          fontSize: 16,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],

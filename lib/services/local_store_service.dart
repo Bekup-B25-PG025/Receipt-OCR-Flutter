@@ -45,8 +45,11 @@ class LocalStoreService {
     final f = await _dbFile();
     final txt = await f.readAsString();
     try {
-      final List<dynamic> raw = (txt.trim().isEmpty) ? [] : jsonDecode(txt) as List<dynamic>;
-      _cache = raw.map((e) => Receipt.fromJson(Map<String, dynamic>.from(e))).toList();
+      final List<dynamic> raw =
+          (txt.trim().isEmpty) ? [] : jsonDecode(txt) as List<dynamic>;
+      _cache = raw
+          .map((e) => Receipt.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
     } catch (_) {
       _cache = [];
     }
@@ -68,13 +71,14 @@ class LocalStoreService {
   // ---- API mirip FirestoreService ----
   static Stream<List<Receipt>> streamReceipts([String? _]) {
     () async {
-      await _init();  // baca file
-      _emit();        // pastikan kirim snapshot pertama
+      await _init(); // baca file
+      _emit(); // pastikan kirim snapshot pertama
     }();
     return _controller.stream;
   }
 
-  static Future<Receipt> saveNewReceipt(Receipt draft, Uint8List imageBytes) async {
+  static Future<Receipt> saveNewReceipt(
+      Receipt draft, Uint8List imageBytes) async {
     await _init();
     final id = _uuid.v4();
     final images = await _imagesDir();
@@ -95,6 +99,44 @@ class LocalStoreService {
     await _persist();
     _emit();
     return r;
+  }
+
+  // Batch save multiple receipts
+  static Future<List<Receipt>> saveBatchReceipts(
+    List<Receipt> drafts,
+    List<Uint8List> imageBytesList,
+  ) async {
+    await _init();
+
+    if (drafts.length != imageBytesList.length) {
+      throw ArgumentError('Jumlah drafts dan images harus sama');
+    }
+
+    final savedReceipts = <Receipt>[];
+    final images = await _imagesDir();
+
+    for (int i = 0; i < drafts.length; i++) {
+      final id = _uuid.v4();
+      final imgPath = '${images.path}/$id.jpg';
+      await File(imgPath).writeAsBytes(imageBytesList[i]);
+
+      final now = DateTime.now();
+      final created = drafts[i].createdAt;
+      final r = drafts[i].copyWith(
+        id: id,
+        imagePath: imgPath,
+        status: 'validated',
+        createdAt: created.isAfter(DateTime(2001)) ? created : now,
+        updatedAt: now,
+      );
+
+      _cache.add(r);
+      savedReceipts.add(r);
+    }
+
+    await _persist();
+    _emit();
+    return savedReceipts;
   }
 
   static Future<void> updateReceipt(Receipt r) async {
@@ -118,7 +160,8 @@ class LocalStoreService {
     _emit();
   }
 
-  static Future<List<Receipt>> receiptsInMonth(DateTime month, [String? _]) async {
+  static Future<List<Receipt>> receiptsInMonth(DateTime month,
+      [String? _]) async {
     await _init();
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 1);

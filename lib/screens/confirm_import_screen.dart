@@ -5,8 +5,38 @@ import 'package:provider/provider.dart';
 import 'package:smartnote_flutter/providers/receipt_provider.dart';
 import 'package:smartnote_flutter/screens/review_screen.dart';
 
-class ConfirmImportScreen extends StatelessWidget {
+class ConfirmImportScreen extends StatefulWidget {
   const ConfirmImportScreen({super.key});
+
+  @override
+  State<ConfirmImportScreen> createState() => _ConfirmImportScreenState();
+}
+
+class _ConfirmImportScreenState extends State<ConfirmImportScreen> {
+  String _selectedCategory = 'Lainnya';
+
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'Kebutuhan Bisnis':
+        return Icons.business_center_rounded;
+      case 'Makanan':
+        return Icons.restaurant_rounded;
+      case 'Transportasi':
+        return Icons.directions_car_rounded;
+      case 'Kesehatan':
+        return Icons.health_and_safety_rounded;
+      case 'Pendidikan':
+        return Icons.school_rounded;
+      case 'Kebutuhan Harian':
+        return Icons.shopping_bag_rounded;
+      case 'Kebutuhan Bulanan':
+        return Icons.calendar_month_rounded;
+      case 'Belanja':
+        return Icons.shopping_cart_rounded;
+      default:
+        return Icons.category_rounded;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -275,7 +305,100 @@ class ConfirmImportScreen extends StatelessWidget {
                         ),
                       ),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
+
+                      // Category Selection (Compact)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF6366F1)
+                                  .withValues(alpha: 0.08),
+                              blurRadius: 12,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Kategori',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                'Kebutuhan Bisnis',
+                                'Makanan',
+                                'Transportasi',
+                                'Kesehatan',
+                                'Pendidikan',
+                                'Kebutuhan Harian',
+                                'Kebutuhan Bulanan',
+                                'Belanja',
+                                'Lainnya',
+                              ].map((category) {
+                                final isSelected =
+                                    _selectedCategory == category;
+                                return FilterChip(
+                                  selected: isSelected,
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  label: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _getCategoryIcon(category),
+                                        size: 14,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : const Color(0xFF6366F1),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(category),
+                                    ],
+                                  ),
+                                  onSelected: (selected) {
+                                    setState(() {
+                                      _selectedCategory = category;
+                                    });
+                                  },
+                                  selectedColor: const Color(0xFF6366F1),
+                                  checkmarkColor: Colors.white,
+                                  backgroundColor: Colors.grey.shade50,
+                                  labelStyle: TextStyle(
+                                    fontSize: 11,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : const Color(0xFF1F2937),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    side: BorderSide(
+                                      color: isSelected
+                                          ? const Color(0xFF6366F1)
+                                          : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
 
                       // Buttons
                       Row(
@@ -326,6 +449,9 @@ class ConfirmImportScreen extends StatelessWidget {
                               ),
                               child: ElevatedButton.icon(
                                 onPressed: () {
+                                  // Update category before navigation
+                                  rp.updateDraft(draft.copyWith(
+                                      category: _selectedCategory));
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(

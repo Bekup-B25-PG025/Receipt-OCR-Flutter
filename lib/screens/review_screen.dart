@@ -24,7 +24,21 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   DateTime _date = DateTime.now();
   List<ReceiptItem> _items = [];
+  String _category = 'Lainnya';
   bool _isSaving = false;
+
+  // Daftar kategori
+  static const List<String> _categories = [
+    'Kebutuhan Bisnis',
+    'Makanan',
+    'Transportasi',
+    'Kesehatan',
+    'Pendidikan',
+    'Kebutuhan Harian',
+    'Kebutuhan Bulanan',
+    'Belanja',
+    'Lainnya',
+  ];
 
   @override
   void initState() {
@@ -38,6 +52,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     _payment = TextEditingController(text: r?.paymentMethod ?? '');
     _date = r?.date ?? DateTime.now();
     _items = [...(r?.items ?? [])];
+    _category = r?.category ?? 'Lainnya';
 
     _tax.addListener(_recalcTotals);
   }
@@ -71,6 +86,29 @@ class _ReviewScreenState extends State<ReviewScreen> {
     setState(() {});
   }
 
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'Kebutuhan Bisnis':
+        return Icons.business_center_rounded;
+      case 'Makanan':
+        return Icons.restaurant_rounded;
+      case 'Transportasi':
+        return Icons.directions_car_rounded;
+      case 'Kesehatan':
+        return Icons.medical_services_rounded;
+      case 'Pendidikan':
+        return Icons.school_rounded;
+      case 'Kebutuhan Harian':
+        return Icons.shopping_basket_rounded;
+      case 'Kebutuhan Bulanan':
+        return Icons.calendar_month_rounded;
+      case 'Belanja':
+        return Icons.shopping_bag_rounded;
+      default:
+        return Icons.category_rounded;
+    }
+  }
+
   Future<void> _save() async {
     setState(() => _isSaving = true);
 
@@ -89,6 +127,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         paymentMethod:
             _payment.text.trim().isEmpty ? null : _payment.text.trim(),
         date: _date,
+        category: _category,
         status: 'validated',
       );
 
@@ -302,6 +341,46 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                     size: 20,
                                   ),
                                 ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Category Dropdown
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _category,
+                                isExpanded: true,
+                                icon: const Icon(Icons.arrow_drop_down_rounded,
+                                    color: Color(0xFF6366F1)),
+                                items: _categories.map((String category) {
+                                  return DropdownMenuItem<String>(
+                                    value: category,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          _getCategoryIcon(category),
+                                          size: 20,
+                                          color: const Color(0xFF6366F1),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(category),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    _category = newValue ?? 'Lainnya';
+                                  });
+                                },
                               ),
                             ),
                           ),

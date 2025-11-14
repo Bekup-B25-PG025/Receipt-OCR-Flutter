@@ -29,6 +29,7 @@ class Receipt {
   String? paymentMethod;
   String? imagePath; // local file path
   String? rawText;
+  String category; // Kategori pengeluaran
   DateTime date;
   DateTime createdAt;
   DateTime updatedAt;
@@ -46,6 +47,7 @@ class Receipt {
     this.paymentMethod,
     this.imagePath,
     this.rawText,
+    this.category = 'Lainnya',
     this.status = 'draft',
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -63,6 +65,7 @@ class Receipt {
     String? paymentMethod,
     String? imagePath,
     String? rawText,
+    String? category,
     DateTime? date,
     String? status,
     DateTime? createdAt,
@@ -79,6 +82,7 @@ class Receipt {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       imagePath: imagePath ?? this.imagePath,
       rawText: rawText ?? this.rawText,
+      category: category ?? this.category,
       date: date ?? this.date,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
@@ -107,6 +111,7 @@ class Receipt {
       paymentMethod: j['paymentMethod'],
       imagePath: j['imagePath'],
       rawText: j['rawText'],
+      category: j['category'] ?? 'Lainnya',
       date: parseDT(j['date']),
       createdAt: parseDT(j['createdAt']),
       updatedAt: parseDT(j['updatedAt']),
@@ -125,6 +130,7 @@ class Receipt {
         'paymentMethod': paymentMethod,
         'imagePath': imagePath,
         'rawText': rawText,
+        'category': category,
         'date': date.toIso8601String(),
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),

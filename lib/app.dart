@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:smartnote_flutter/providers/receipt_provider.dart';
+import 'package:smartnote_flutter/screens/analytics_screen.dart';
 import 'package:smartnote_flutter/screens/history_screen.dart';
 import 'package:smartnote_flutter/screens/home_screen.dart';
 import 'package:smartnote_flutter/screens/report_screen.dart';
@@ -15,10 +16,11 @@ class SmartNoteApp extends StatefulWidget {
 class _SmartNoteAppState extends State<SmartNoteApp> {
   int _tabIndex = 0;
 
-  final _tabs = const [
-    HomeScreen(),
-    HistoryScreen(),
-    ReportScreen(),
+  static final List<Widget> _tabs = [
+    const HomeScreen(),
+    const AnalyticsScreen(),
+    const ReportScreen(),
+    const HistoryScreen(),
   ];
 
   @override
@@ -104,14 +106,19 @@ class _SmartNoteAppState extends State<SmartNoteApp> {
                     label: 'Home',
                   ),
                   NavigationDestination(
+                    icon: Icon(Icons.analytics_outlined),
+                    selectedIcon: Icon(Icons.analytics_rounded),
+                    label: 'Analytics',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.assessment_outlined),
+                    selectedIcon: Icon(Icons.assessment_rounded),
+                    label: 'Report',
+                  ),
+                  NavigationDestination(
                     icon: Icon(Icons.history_outlined),
                     selectedIcon: Icon(Icons.history_rounded),
                     label: 'History',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.bar_chart_outlined),
-                    selectedIcon: Icon(Icons.bar_chart_rounded),
-                    label: 'Report',
                   ),
                 ],
               ),
